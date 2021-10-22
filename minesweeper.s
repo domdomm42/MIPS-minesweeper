@@ -204,9 +204,6 @@ reveal_grid__body:
         addi    $t0, $t0, 1
         j       while_loop_cond_rows
 
-        # end_sub0:
-        # jr      $ra
-
         # PUT YOUR CODE FOR reveal_grid HERE
 
 reveal_grid__epilogue:
