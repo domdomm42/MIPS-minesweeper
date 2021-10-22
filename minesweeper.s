@@ -170,19 +170,19 @@ reveal_grid__body:
 
         # $t0 = row, $t1 = col
 
-        while_loop_row_init:    
+while_loop_row_init:    
         li      $t0, 0          # int row = 0
 
-        while_loop_cond_rows:
+while_loop_cond_rows:
         bge     $t0, N_ROWS, reveal_grid__epilogue   #if row < N_ROWS
 
-        while_loop_col_init:
+while_loop_col_init:
         li      $t1, 0          # int col = 0
 
-        while_loop_cond_cols:
+while_loop_cond_cols:
         bge     $t1, N_COLS, while_loop_row_it   # if col < N_COLS
 
-        while_loop_body:
+while_loop_body:
         # grid[row][col] = grid[row][col] | IS_RVLD_MASK
 
         mul     $t2, $t0, N_COLS    # curr_row * N_COL
@@ -196,11 +196,11 @@ reveal_grid__body:
         ori     $t2, $t2, IS_RVLD_MASK          #OR the element with IS_RVLD_MASK
         sb      $t2, ($t4)          # Store element value with $t5
 
-        while_loop_col_it:
+while_loop_col_it:
         addi    $t1, $t1, 1
         j       while_loop_cond_cols
 
-        while_loop_row_it:
+while_loop_row_it:
         addi    $t0, $t0, 1
         j       while_loop_cond_rows
 
@@ -238,8 +238,14 @@ place_bombs:
         #   -> [epilogue]
 
 place_bombs__prologue:
-        addiu   $sp, $sp, -4
+        addiu   $sp, $sp, -12
         sw      $ra, 0($sp)
+
+        sw      $s4, 4($sp)
+        sw      $s5, 8($sp)
+
+        move    $s4, $a0
+        move    $s5, $a1
 
 place_bombs__body:
 
@@ -252,11 +258,29 @@ place_bombs__body:
         # }
 
         # PUT YOUR CODE FOR place_bombs HERE
+        li      $t4, 0          # int i = 0 
+        lb      $t5, total_bombs
+
+loop_tot_bombs_cond_s1:
+        bge     $t4, $t5, place_bombs__epilogue  # i < total_bombs
+       
+loop_tot_bombs_body_s1:         # place_single_bomb(bad_row, bad_col)
+        jal     place_single_bomb
+
+        move      $a0, $s4      
+        move      $a1, $s5
+
+loop_tot_bombs_it_s1:
+        addi    $t4, $t4, 1
+        j       loop_tot_bombs_cond_s1
 
 
 place_bombs__epilogue:
+        lw      $s5, 8($sp)
+        lw      $s4, 4($sp)
         lw      $ra, 0($sp)
-        addiu   $sp, $sp, 4
+
+        addiu   $sp, $sp, 12
 
         jr      $ra
 
