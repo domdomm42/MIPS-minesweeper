@@ -238,14 +238,14 @@ place_bombs:
         #   -> [epilogue]
 
 place_bombs__prologue:
-        addiu   $sp, $sp, -12
+        addiu   $sp, $sp, -4
         sw      $ra, 0($sp)
 
-        sw      $s4, 4($sp)
-        sw      $s5, 8($sp)
+        # sw      $s4, 4($sp)
+        # sw      $s5, 8($sp)
 
-        move    $s4, $a0
-        move    $s5, $a1
+        # move    $s4, $a0
+        # move    $s5, $a1
 
 place_bombs__body:
 
@@ -259,28 +259,33 @@ place_bombs__body:
 
         # PUT YOUR CODE FOR place_bombs HERE
         li      $t4, 0          # int i = 0 
-        lb      $t5, total_bombs
+        lb      $t5, total_bombs        # t4 and t5 are used because 
+                                        # t0 - t3 is used in the functions.
 
 loop_tot_bombs_cond_s1:
         bge     $t4, $t5, place_bombs__epilogue  # i < total_bombs
        
 loop_tot_bombs_body_s1:         # place_single_bomb(bad_row, bad_col)
+
+        move    $s4, $a0
+        move    $s5, $a1
+
         jal     place_single_bomb
 
         move      $a0, $s4      
         move      $a1, $s5
 
 loop_tot_bombs_it_s1:
-        addi    $t4, $t4, 1
+        addi    $t4, $t4, 1     
         j       loop_tot_bombs_cond_s1
 
 
 place_bombs__epilogue:
-        lw      $s5, 8($sp)
-        lw      $s4, 4($sp)
+        # lw      $s5, 8($sp)
+        # lw      $s4, 4($sp)
         lw      $ra, 0($sp)
 
-        addiu   $sp, $sp, 12
+        addiu   $sp, $sp, 4
 
         jr      $ra
 
