@@ -189,12 +189,12 @@ while_loop_body:
         add     $t2, $t2, $t1       # + curr_col
         la      $t3, grid
 
-        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 4
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
         add     $t4, $t2, $t3
 
-        lb      $t2, ($t4)          # Load element value into $t5
+        lb      $t2, ($t4)          # Load element value into $t2
         ori     $t2, $t2, IS_RVLD_MASK          #OR the element with IS_RVLD_MASK
-        sb      $t2, ($t4)          # Store element value with $t5
+        sb      $t2, ($t4)          # Store element value with $t2
 
 while_loop_col_it:
         addi    $t1, $t1, 1
@@ -343,6 +343,99 @@ mark_cell__body:
 
         # PUT YOUR CODE FOR mark_cell HERE
 
+# mark cell
+if_grid_mark_cond_s2:
+
+
+        mul     $t2, $a0, N_COLS    # curr_row * N_COL
+        add     $t2, $t2, $a1       # + curr_col
+        la      $t3, grid
+
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+
+        # move    $s2, $t2            # save grid[row][col]
+
+        add     $t4, $t2, $t3
+        lb      $t2, ($t4)
+
+        and     $t2, $t2, IS_RVLD_MASK  # Element and IS_RLVD_MASK
+        # sb      $t2, ($t4)              # Store above value as element
+
+        beqz    $t2, if_grid_and_rvld_unmarked_conds2
+
+if_debug_s2:
+        la      $t3, debug_mode
+        lw      $t3, debug_mode
+        beqz    $t3, if_grid_and_rvld_s2_body
+
+
+if_debug_s2_body:
+        j mark_cell__epilogue
+
+if_grid_and_rvld_s2_body:
+        li $v0, 4          #load immediate, $v0 = 4 used for hard coded value.
+        la $a0, sub2_text  #load address
+        syscall
+
+        j mark_cell__epilogue
+
+# unmark cell
+if_grid_and_rvld_unmarked_conds2:
+        
+        mul     $t2, $a0, N_COLS    # curr_row * N_COL
+        add     $t2, $t2, $a1       # + curr_col
+        la      $t3, grid
+
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        add     $t4, $t2, $t3
+        lb      $t2, ($t4)
+
+        and     $t2, $t2, IS_MRKD_MASK  # Element and IS_MRKD_MASK
+        # sb      $t2, ($t4)              # Store above value as element
+
+        beqz    $t2, else_marked_s2_body   # if grid[row][col] & is_mrkd_mask == 1
+
+if_grid_and_rvld_unmarked_body:
+        li      $t6, IS_MRKD_MASK
+
+        not     $t5, $t6            # ~IS_MRKD_MASK
+
+        mul     $t2, $a0, N_COLS    # curr_row * N_COL
+        add     $t2, $t2, $a1       # + curr_col
+        la      $t3, grid
+
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        add     $t4, $t2, $t3
+        lb      $t2, ($t4)
+
+        and     $t2, $t2, $t5  # Element and IS_MRKD_MASK
+        sb      $t2, ($t4)              # Store above value as element
+
+        la      $t5, bomb_count
+        lw      $t6, ($t5)
+        addi    $t6, $t6, 1
+        sw      $t6, ($t5)
+
+        j mark_cell__epilogue
+
+
+else_marked_s2_body:
+        mul     $t2, $a0, N_COLS    # curr_row * N_COL
+        add     $t2, $t2, $a1       # + curr_col
+        la      $t3, grid
+
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        add     $t4, $t2, $t3
+        lb      $t2, ($t4)
+
+        or      $t2, $t2, IS_MRKD_MASK  # Element and IS_MRKD_MASK
+        sb      $t2, ($t4)              # Store above value as element
+
+        la      $t5, bomb_count
+        lw      $t6, ($t5)
+        sub     $t6, $t6, 1
+        sw      $t6, ($t5)
+
 
 mark_cell__epilogue:
         lw      $ra, 0($sp)
@@ -350,6 +443,8 @@ mark_cell__epilogue:
 
         jr      $ra
 
+.data
+        sub2_text: .asciiz "Cannot mark a revealed cell.\n"
 
 
 ########################################################################
