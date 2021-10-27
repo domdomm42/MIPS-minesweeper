@@ -238,11 +238,11 @@ place_bombs:
         #   -> [epilogue]
 
 place_bombs__prologue:
-        addiu   $sp, $sp, -4
+        addiu   $sp, $sp, -12
         sw      $ra, 0($sp)
 
-        # sw      $s4, 4($sp)
-        # sw      $s5, 8($sp)
+        sw      $s4, 4($sp)
+        sw      $s5, 8($sp)
 
         # move    $s4, $a0
         # move    $s5, $a1
@@ -281,11 +281,11 @@ loop_tot_bombs_it_s1:
 
 
 place_bombs__epilogue:
-        # lw      $s5, 8($sp)
-        # lw      $s4, 4($sp)
+        lw      $s5, 8($sp)
+        lw      $s4, 4($sp)
         lw      $ra, 0($sp)
 
-        addiu   $sp, $sp, 4
+        addiu   $sp, $sp, 12
 
         jr      $ra
 
@@ -395,7 +395,7 @@ if_grid_and_rvld_unmarked_conds2:
 
         beqz    $t2, else_marked_s2_body   # if grid[row][col] & is_mrkd_mask == 1
 
-if_grid_and_rvld_unmarked_body:
+if_grid_and_mrkd_unmarked_body:
         li      $t6, IS_MRKD_MASK
 
         not     $t5, $t6            # ~IS_MRKD_MASK
@@ -471,8 +471,10 @@ reveal_cell:
         #   -> [epilogue]
 
 reveal_cell__prologue:
-        addiu   $sp, $sp, -4
+        addiu   $sp, $sp, -12
         sw      $ra, 0($sp)
+        sw      $s2, 4($sp)
+        sw      $s3, 8($sp)
 
 reveal_cell__body:
 
@@ -516,12 +518,171 @@ reveal_cell__body:
 
         # PUT YOUR CODE FOR reveal_cell HERE
 
+if_grid_mark_cond_s3:
+# Cannot reveal a cell that is currently marked.
+        # Find grid[row][col]
+        mul     $t2, $a0, N_COLS    # curr_row * N_COL
+        add     $t2, $t2, $a1       # + curr_col
+        la      $t3, grid
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        add     $t4, $t2, $t3
+
+        # Store the element of grid[row][col] at $t2
+        lb      $t2, ($t4)
+
+        # (if grid[row][col] & IS_MRKD_MASK != 0)
+        and     $t2, $t2, IS_MRKD_MASK  # Element and IS_MRKD_MASK
+        beqz    $t2, if_grid_rvld_cond_s3
+
+if_debug_s3:
+
+        # (if debug_mode != 0)
+        la      $t3, debug_mode
+        lw      $t3, debug_mode
+        beqz    $t3, if_grid_and_mrkd_s3_body
+
+
+if_debug_s3_body:
+        # return
+        j reveal_cell__epilogue
+
+if_grid_and_mrkd_s3_body:
+
+        #printf("Cannot reveal a marked cell.\n")
+        li $v0, 4          #load immediate, $v0 = 4 used for hard coded value.
+        la $a0, sub3_text_no_reveal  #load address
+        syscall
+
+        j reveal_cell__epilogue
+
+###########################################
+if_grid_rvld_cond_s3:
+
+        # if (grid[row][col] & IS_RVLD_MASK)
+        mul     $t2, $a0, N_COLS    # curr_row * N_COL
+        add     $t2, $t2, $a1       # + curr_col
+        la      $t3, grid
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        add     $t4, $t2, $t3
+        # Load the element of grid[row][col] into $t2
+        lb      $t2, ($t4)
+        and     $t2, $t2, IS_RVLD_MASK  
+        beqz    $t2, if_is_bomb_mask_s3_cond
+
+if_debug_rvld_s3:
+        # if (debug_mode)
+        la      $t3, debug_mode
+        lw      $t3, debug_mode
+        beqz    $t3, if_grid_and_rvld_s3_body
+
+if_debug_rvld_s3_body:
+        # return
+        j reveal_cell__epilogue
+
+if_grid_and_rvld_s3_body:
+        li $v0, 4          #load immediate, $v0 = 4 used for hard coded value.
+        la $a0, sub3_text_already_revealed  #load address
+        syscall
+
+        j reveal_cell__epilogue
+
+
+# Trigger game over if the cell is a bomb.
+if_is_bomb_mask_s3_cond:
+        
+        # if (grid[row][col] & IS_BOMB_MASK)
+        mul     $t2, $a0, N_COLS    # curr_row * N_COL
+        add     $t2, $t2, $a1       # + curr_col
+        la      $t3, grid
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        add     $t4, $t2, $t3
+
+        # Loading grid[row][col] into $t2
+        lb      $t2, ($t4)
+
+        and     $t2, $t2, IS_BOMB_MASK  # Element and VALUE_MASK
+        beqz    $t2, if_reveal_cell_s3_cond
+
+# Trigger game over if the cell is a bomb.
+if_is_bomb_mask_s3_body:
+        li      $t2, LOSE
+        sw      $t2, game_state
+
+
+# Reveal the cell.
+        #if ((grid[row][col] & VALUE_MASK) == 0)
+if_reveal_cell_s3_cond:
+        
+        mul     $t2, $a0, N_COLS    # curr_row * N_COL
+        add     $t2, $t2, $a1       # + curr_col
+        la      $t3, grid
+
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+
+        add     $t4, $t2, $t3
+        lb      $t2, ($t4)
+
+        and     $t2, $t2, VALUE_MASK  # Element and VALUE_MASK
+        bnez    $t2, else_reveal_cell_s3
+
+if_reveal_cell_s3_body:
+        move    $s2, $a0
+        move    $s3, $a1
+
+        jal     clear_surroundings
+
+        move    $a0, $s2
+        move    $a1, $s3
+
+# else 
+else_reveal_cell_s3:
+        mul     $t2, $a0, N_COLS    # curr_row * N_COL
+        add     $t2, $t2, $a1       # + curr_col
+        la      $t3, grid
+
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+
+        add     $t4, $t2, $t3
+        lb      $t2, ($t4)
+
+        or      $t2, $t2, IS_RVLD_MASK  # Element or VALUE_MASK
+
+        sb      $t2, ($t4)
+
+# if (game_state != LOSE)
+if_game_state_not_lose_s3_cond:
+        lw      $t2, game_state
+        beq     $t2, LOSE, if_cells_left_zero_s3_cond   
+
+# cells_left--
+if_game_state_not_lose_s3_body:
+        lw      $t3, cells_left
+        sub     $t3, $t3, 1
+        sw      $t3, cells_left
+
+# if (cells_left == 0)
+if_cells_left_zero_s3_cond:
+        lw      $t3, cells_left
+        bne     $t3, 0 ,reveal_cell__epilogue
+
+if_cells_left_zero_s3_body:
+        lw      $t2, game_state
+        li      $t3, WIN
+        move    $t2, $t3
+        sw      $t2, game_state
+
 
 reveal_cell__epilogue:
         lw      $ra, 0($sp)
-        addiu   $sp, $sp, 4
+        lw      $s2, 4($sp)
+        lw      $s3, 8($sp)
+        addiu   $sp, $sp, 12
 
         jr      $ra
+        
+.data
+        sub3_text_no_reveal: .asciiz "Cannot reveal a marked cell.\n"
+        sub3_text_already_revealed: .asciiz "Cell is already revealed.\n"
 
 
 
@@ -549,8 +710,15 @@ clear_surroundings:
         #   -> [epilogue]
 
 clear_surroundings__prologue:
-        addiu   $sp, $sp, -4
+        addiu   $sp, $sp, -20
         sw      $ra, 0($sp)
+        sw      $s0, 4($sp)
+        sw      $s1, 8($sp)
+        sw      $s4, 12($sp)
+        sw      $s5, 16($sp)
+
+        # move    $s0, $a0
+        # move    $a1, $a1
 
 clear_surroundings__body:
 
@@ -588,9 +756,154 @@ clear_surroundings__body:
 
         # PUT YOUR CODE FOR clear_surroundings HERE
 
+clear_surrounding_if_1_cond_1:   
+        blt     $a0, 0, clear_surroundings__epilogue
+
+clear_surrounding_if_1_cond_2:
+        bge     $a0, N_ROWS, clear_surroundings__epilogue
+
+clear_surrounding_if_1_cond_3:
+        blt     $a1, 0, clear_surroundings__epilogue
+
+clear_surrounding_if_1_cond_4:
+        bge     $a1, N_COLS, clear_surroundings__epilogue
+
+
+clear_surrounding_if_2_cond:
+# if (grid[row][col] & IS_RVLD_MASK) != 0
+        mul     $t2, $a0, N_COLS    # curr_row * N_COL
+        add     $t2, $t2, $a1       # + curr_col
+        la      $t3, grid
+
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+
+        add     $t4, $t2, $t3
+        lb      $t2, ($t4)
+
+        and     $t2, $t2, IS_RVLD_MASK  # Element and IS_RLVD_MASK
+        bnez    $t2, clear_surroundings__epilogue
+
+# Reveal the cell
+reveal_cell_s3:
+        mul     $t2, $a0, N_COLS    # curr_row * N_COL
+        add     $t2, $t2, $a1       # + curr_col
+        la      $t3, grid
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        add     $t4, $t2, $t3
+        lb      $t2, ($t4)
+        or      $t2, $t2, IS_RVLD_MASK  # Element and IS_RVLD_MASK
+
+        sb      $t2, ($t4)
+
+        lw      $t3, cells_left
+        sub     $t3, $t3, 1
+        sw      $t3, cells_left
+
+# Unmark the cell if it was marked
+unmark_cell_s3:
+        # grid[row][col] &= ~IS_MRKD_MASK
+
+        li      $t6, IS_MRKD_MASK
+        not     $t5, $t6            # ~IS_MRKD_MASK
+
+        mul     $t2, $a0, N_COLS    # curr_row * N_COL
+        add     $t2, $t2, $a1       # + curr_col
+        la      $t3, grid
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        add     $t4, $t2, $t3
+        lb      $t2, ($t4)
+
+        and     $t2, $t2, $t5  # Element and IS_MRKD_MASK
+        sb      $t2, ($t4)              # Store above value as element
+
+# Stop revealing once a numbered cell is reached.
+clear_surrounding_if_3_cond:
+        mul     $t2, $a0, N_COLS    # curr_row * N_COL
+        add     $t2, $t2, $a1       # + curr_col
+        la      $t3, grid
+        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        add     $t4, $t2, $t3
+        lb      $t2, ($t4)
+
+        # if (grid[row][col] & VALUE_MASK != 0)
+        and     $t2, $t2, VALUE_MASK  # Element and IS_RLVD_MASK
+        beqz    $t2, recursion_clear_surroundings
+
+clear_surrounding_if_3_body:
+        j       clear_surroundings__epilogue
+
+
+recursion_clear_surroundings:
+# $s0 = row - 1, $s1 = col - 1, $s4 = row + 1, $s5 = col + 1
+
+        # Recursion 1
+        move    $s0, $a0
+        sub     $a0, $a0, 1
+        jal     clear_surroundings
+        move    $a0, $s0
+        
+        # Recursion 2
+        move    $s0, $a0
+        move    $s1, $a1
+        sub     $a0, $a0, 1
+        sub     $a1, $a1, 1
+        jal     clear_surroundings
+        move    $a0, $s0
+        move    $a1, $s1
+
+        # Recursion 3
+        move    $s0, $a0
+        move    $s4, $a1
+        sub     $a0, $a0, 1
+        addi    $a1, $a1, 1
+        jal     clear_surroundings
+        move    $a0, $s0
+        move    $a1, $s4
+
+        # Recursion 4
+        move    $s1, $a1
+        sub     $a1, $a1, 1
+        jal     clear_surroundings
+        move    $a1, $s1
+
+        # Recursion 5
+        move    $s5, $a1
+        addi    $a1, $a1, 1
+        jal     clear_surroundings
+        move    $a1, $s5
+
+        # Recursion 6
+        move    $s5, $a0
+        move    $s4, $a1
+        addi    $a0, $a0, 1
+        sub     $a1, $a1, 1
+        jal     clear_surroundings
+        move    $a0, $s5
+        move    $a1, $s4
+
+        # Recursion 7
+        move    $s5, $a0
+        addi    $a0, $a0, 1
+        jal     clear_surroundings
+        move    $a0, $s5
+
+        # Recursion 8
+        move    $s4, $a0
+        move    $s5, $a1
+        addi    $a0, $a0, 1
+        addi    $a1, $a1, 1
+        jal     clear_surroundings
+        move    $a0, $s4
+        move    $a1, $s5
+
+
 clear_surroundings__epilogue:
+        lw      $s5, 16($sp)
+        lw      $s4, 12($sp)
+        lw      $s1, 8($sp)
+        lw      $s0, 4($sp)
         lw      $ra, 0($sp)
-        addiu   $sp, $sp, 4
+        addiu   $sp, $sp, 20
         jr      $ra
 
 
