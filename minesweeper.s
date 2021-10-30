@@ -374,7 +374,7 @@ if_debug_s2_body:
 
 if_grid_and_rvld_s2_body:
         li $v0, 4          #load immediate, $v0 = 4 used for hard coded value.
-        la $a0, sub2_text  #load address
+        la $a0, mark_error  #load address
         syscall
 
         j mark_cell__epilogue
@@ -442,9 +442,6 @@ mark_cell__epilogue:
         addiu   $sp, $sp, 4
 
         jr      $ra
-
-.data
-        sub2_text: .asciiz "Cannot mark a revealed cell.\n"
 
 
 ########################################################################
@@ -537,9 +534,8 @@ if_grid_mark_cond_s3:
 if_debug_s3:
 
         # (if debug_mode != 0)
-        la      $t3, debug_mode
         lw      $t3, debug_mode
-        beqz    $t3, if_grid_and_mrkd_s3_body
+        beq     $t3, FALSE, if_grid_and_mrkd_s3_body
 
 
 if_debug_s3_body:
@@ -550,7 +546,7 @@ if_grid_and_mrkd_s3_body:
 
         #printf("Cannot reveal a marked cell.\n")
         li $v0, 4          #load immediate, $v0 = 4 used for hard coded value.
-        la $a0, sub3_text_no_reveal  #load address
+        la $a0, reveal_error  #load address
         syscall
 
         j reveal_cell__epilogue
@@ -571,9 +567,9 @@ if_grid_rvld_cond_s3:
 
 if_debug_rvld_s3:
         # if (debug_mode)
-        la      $t3, debug_mode
+        
         lw      $t3, debug_mode
-        beqz    $t3, if_grid_and_rvld_s3_body
+        beq     $t3, FALSE, if_grid_and_rvld_s3_body
 
 if_debug_rvld_s3_body:
         # return
@@ -581,7 +577,7 @@ if_debug_rvld_s3_body:
 
 if_grid_and_rvld_s3_body:
         li $v0, 4          #load immediate, $v0 = 4 used for hard coded value.
-        la $a0, sub3_text_already_revealed  #load address
+        la $a0, already_revealed  #load address
         syscall
 
         j reveal_cell__epilogue
@@ -634,6 +630,8 @@ if_reveal_cell_s3_body:
         move    $a0, $s2
         move    $a1, $s3
 
+        j       if_cells_left_zero_s3_cond
+
 # else 
 else_reveal_cell_s3:
         mul     $t2, $a0, N_COLS    # curr_row * N_COL
@@ -663,14 +661,13 @@ if_game_state_not_lose_s3_body:
 # if (cells_left == 0)
 if_cells_left_zero_s3_cond:
         lw      $t3, cells_left
-        bne     $t3, 0 ,reveal_cell__epilogue
+        bnez    $t3, reveal_cell__epilogue
 
 if_cells_left_zero_s3_body:
-        lw      $t2, game_state
+        # lw      $t2, game_state
         li      $t3, WIN
-        move    $t2, $t3
-        sw      $t2, game_state
-
+        # move    $t2, $t3
+        sw      $t3, game_state
 
 reveal_cell__epilogue:
         lw      $ra, 0($sp)
@@ -680,10 +677,6 @@ reveal_cell__epilogue:
 
         jr      $ra
         
-.data
-        sub3_text_no_reveal: .asciiz "Cannot reveal a marked cell.\n"
-        sub3_text_already_revealed: .asciiz "Cell is already revealed.\n"
-
 
 
 ########################################################################
@@ -931,8 +924,10 @@ update_highscore:
         #   -> [epilogue]
 
 update_highscore__prologue:
-        addiu   $sp, $sp, -4
+        addiu   $sp, $sp, -12
         sw      $ra, 0($sp)
+        sb      $s0, 4($sp)
+        sw      $s1, 8($sp)
 
 update_highscore__body:
 
@@ -956,10 +951,74 @@ update_highscore__body:
         # }
 
         # PUT YOUR CODE FOR update_highscore HERE
+USERSCORE_SCORE = 0
+USERSCORE_NAME = 4
+# $t0 = high_score address, $t1 = high_score.score
+# $t2 = score, $t3 = i, $t4 = user_name
+
+if_hs_less_s4_cond:
+        # if(high_score.score < score)
+        la      $t0, high_score
+        addi    $s0, $t0, USERSCORE_SCORE
+        lw      $t2, ($s0)
+        bge     $t2, $a0, return_false_s4
+
+if_hs_less_s4_body_top:
+        # high_score.score = score
+        sw      $a0, ($s0)
+
+        # int i = 0
+        li      $t3, 0
+
+while_user_name_s4_cond:
+        la      $t4, user_name
+        
+        # array of characters so offset is 1
+        add     $t4, $t4, $t3
+
+        lb      $t5, ($t4)
+
+        beq     $t5, 0, if_hs_less_s4_body_bottom  #'\0'
+
+while_user_name_s4_body:
+        # high_score.name[i]
+        la      $t0, high_score
+        add     $t1, $t0, USERSCORE_NAME
+        add     $s1, $t1, $t3
+        # lb      $t4, ($s1)
+
+        # user_name[i]
+        la      $t2, user_name
+        add     $t2, $t2, $t3
+        lb      $t5, ($t2)
+
+        sb      $t5, ($s1)
+        addi    $t3, $t3, 1
+
+        j       while_user_name_s4_cond
+
+if_hs_less_s4_body_bottom:
+        la      $t0, high_score
+        add     $s1, $t0, USERSCORE_NAME
+        add     $s1, $t1, $t3
+        # lb      $t4, ($s1)
+
+        li      $t2, 0
+        sb      $t2, ($s1)
+
+        li      $v0, TRUE
+        j       update_highscore__epilogue     
+
+return_false_s4:
+        li      $v0, FALSE     
+        j       update_highscore__epilogue     
+
 
 update_highscore__epilogue:
+        lb      $s1, 8($sp)
+        lw      $s0, 4($sp)
         lw      $ra, 0($sp)
-        addiu   $sp, $sp, 4
+        addiu   $sp, $sp, 12
 
         jr      $ra
 
@@ -986,37 +1045,91 @@ print_scores:
         #   -> [epilogue]
 
 print_scores__prologue:
-        addiu   $sp, $sp, -4
+        addiu   $sp, $sp, -8
         sw      $ra, 0($sp)
+        sw      $s2, 4($sp)
 
 print_scores__body:
+        # printf("-------------SCORES-----------\n\n")
+        la      $a0, scores_msg
+        li      $v0, 4                 
+        syscall     
 
-        # TODO: convert this C function to MIPS
+        # int i = 0
+        li      $t0, 0
+for_loop_print_score_cond:
 
-        # void print_scores(void) {
-        #   printf("-------------SCORES-----------\n\n");
-        #   for (int i = 0; i < MAX_SCORES; i++) {
-        #     struct UserScore curr = scores[i];
-        #     if (curr.score == -1) {
-        #       break;
-        #     }
-        #     printf("------------------------------\n");
-        #     printf("* USERNAME:\t%s\n", curr.name);
-        #     printf("* SCORE:\t%d\n", curr.score);
-        #   }
-        #   printf("------------------------------\n");
-        # }
+        # for (int i = 0; i < MAX_SCORES; i++)
+        bge     $t0, MAX_SCORES, end_print
 
-        # PUT YOUR CODE FOR print_scores HERE
+for_loop_print_score_body:
+        #scores[i]
+        la      $t3, scores
+        mul     $t2, $t0, USER_SCORE_SIZE
+        lw      $t1, scores($t2)
+
+        # UserScore curr
+        la      $s2, high_score
+        sw      $t1, ($s2)
+
+if_curr_score_is_negative1:
+        bne     $t1, -1, for_loop_print_score_body_bottom
+
+if_curr_score_is_negative1_body:
+        j       end_print
+
+for_loop_print_score_body_bottom:
+        la      $a0, scores_line_msg
+        li      $v0, 4                 
+        syscall     
+
+        la      $a0, scores_username_msg
+        li      $v0, 4                 
+        syscall     
+
+
+        # # curr.name
+        la      $t1, scores         # printf("%s", curr.name);
+        addi    $t2, $t1, 4
+        mul     $t3, $t0, 24
+        add     $a0, $t2, $t3
+        li      $v0, 4
+        syscall   
+
+        li   $a0, '\n'              #   putchar('\n');
+        li   $v0, 11
+        syscall
+
+        la      $a0, scores_score_msg
+        li      $v0, 4                 
+        syscall     
+
+        lw      $a0, high_score         # printf("%d", curr.score)
+        li      $v0, 1                  
+        syscall  
+
+        li   $a0, '\n'              #   putchar('\n');
+        li   $v0, 11
+        syscall
+
+
+for_loop_print_score_it:
+        addi    $t0, $t0, 1
+        j       for_loop_print_score_cond
+
+end_print:
+        la      $a0, scores_line_msg
+        li      $v0, 4                 
+        syscall     
+
 
 
 print_scores__epilogue:
+        lw      $s2, 4($sp)
         lw      $ra, 0($sp)
-        addiu   $sp, $sp, 4
+        addiu   $sp, $sp, 8
 
         jr      $ra
-
-
 
 ########################################################################
 ####                                                                ####
