@@ -139,12 +139,14 @@ reveal_grid:
         # Arguments: void
         # Returns: void
         #
-        # Frame:    $ra, [...]
-        # Uses:     [...]
-        # Clobbers: [...]
+        # Frame:    $ra
+        # Uses:     $t0, $t1, $t2, $t3, $t4
+        # Clobbers: $t0, $t1, $t2, $t3, $t4
         #
         # Locals:
-        #   - [...]
+        #   - 'grid[row][col]' in $t2
+        #   - 'int row' is $t0
+        #   - 'int col' is $t1
         #
         # Structure:
         #   reveal_grid
@@ -157,18 +159,6 @@ reveal_grid__prologue:
         sw      $ra, 0($sp)
 
 reveal_grid__body:
-
-        # TODO: convert this C function to MIPS [subset 0]
-
-        # void reveal_grid(void) {
-        #   for (int row = 0; row < N_ROWS; row++) {
-        #     for (int col = 0; col < N_COLS; col++) {
-        #       grid[row][col] |= IS_RVLD_MASK;
-        #     }
-        #   }
-        # }
-
-        # $t0 = row, $t1 = col
 
 while_loop_row_init:    
         li      $t0, 0          # int row = 0
@@ -183,7 +173,6 @@ while_loop_cond_cols:
         bge     $t1, N_COLS, while_loop_row_it   # if col < N_COLS
 
 while_loop_body:
-        # grid[row][col] = grid[row][col] | IS_RVLD_MASK
 
         mul     $t2, $t0, N_COLS    # curr_row * N_COL
         add     $t2, $t2, $t1       # + curr_col
@@ -224,12 +213,12 @@ place_bombs:
         #   - $a1: int bad_col
         # Returns: void
         #
-        # Frame:    $ra, [...]
-        # Uses:     [...]
-        # Clobbers: [...]
+        # Frame:    $ra, $s4, $s5
+        # Uses:     $ra, $a0, $a1, $t4, $t5, $s4, $s5
+        # Clobbers: $t4, $t5
         #
         # Locals:
-        #   - [...]
+        #   - 'int i' is $t4
         #
         # Structure:
         #   place_bombs
@@ -244,36 +233,22 @@ place_bombs__prologue:
         sw      $s4, 4($sp)
         sw      $s5, 8($sp)
 
-        # move    $s4, $a0
-        # move    $s5, $a1
-
 place_bombs__body:
-
-        # TODO: convert this C function to MIPS
-
-        # void place_bombs(int bad_row, int bad_col) {
-        #   for (int i = 0; i < total_bombs; i++) {
-        #     place_single_bomb(bad_row, bad_col);
-        #   }
-        # }
-
-        # PUT YOUR CODE FOR place_bombs HERE
-        li      $t4, 0          # int i = 0 
-        lb      $t5, total_bombs        # t4 and t5 are used because 
-                                        # t0 - t3 is used in the functions.
+        li      $t4, 0                  # int i = 0 
+        lb      $t5, total_bombs        
 
 loop_tot_bombs_cond_s1:
         bge     $t4, $t5, place_bombs__epilogue  # i < total_bombs
        
-loop_tot_bombs_body_s1:         # place_single_bomb(bad_row, bad_col)
+loop_tot_bombs_body_s1:         
 
         move    $s4, $a0
         move    $s5, $a1
 
-        jal     place_single_bomb
+        jal     place_single_bomb        # place_single_bomb(bad_row, bad_col)
 
-        move      $a0, $s4      
-        move      $a1, $s5
+        move    $a0, $s4      
+        move    $a1, $s5
 
 loop_tot_bombs_it_s1:
         addi    $t4, $t4, 1     
@@ -301,12 +276,12 @@ mark_cell:
         #   $a1: int col
         # Returns: void
         #
-        # Frame:    $ra, [...]
-        # Uses:     [...]
-        # Clobbers: [...]
+        # Frame:    $ra
+        # Uses:     $a0, $a1, $t2, $t3, $t4, $t5, $t6
+        # Clobbers: $t2, $t3, $t4, $t5, $t6
         #
         # Locals:
-        #   - [...]
+        #   - 'grid[row][col]' in $t2
         #
         # Structure:
         #   mark_cell
@@ -320,46 +295,20 @@ mark_cell__prologue:
 
 mark_cell__body:
 
-        # TODO: convert this C function to MIPS
-
-        # void mark_cell(int row, int col) {
-        #   if (grid[row][col] & IS_RVLD_MASK) {
-        #     if (debug_mode) {
-        #       return;
-        #     }
-        #     printf("Cannot mark a revealed cell.\n");
-        #     return;
-        #   }
-        #   // Unmark a marked cell.
-        #   if (grid[row][col] & IS_MRKD_MASK) {
-        #     grid[row][col] &= ~IS_MRKD_MASK;
-        #     bomb_count++;
-        #     // Mark a cell.
-        #   } else {
-        #     grid[row][col] |= IS_MRKD_MASK;
-        #     bomb_count--;
-        #   }
-        # }
-
-        # PUT YOUR CODE FOR mark_cell HERE
-
 # mark cell
 if_grid_mark_cond_s2:
 
 
-        mul     $t2, $a0, N_COLS    # curr_row * N_COL
-        add     $t2, $t2, $a1       # + curr_col
+        mul     $t2, $a0, N_COLS        # curr_row * N_COL
+        add     $t2, $t2, $a1           # + curr_col
         la      $t3, grid
+        mul     $t2, $t2, 1             # (curr_row * N_COL + curr_col) * 1
 
-        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
-
-        # move    $s2, $t2            # save grid[row][col]
 
         add     $t4, $t2, $t3
         lb      $t2, ($t4)
 
         and     $t2, $t2, IS_RVLD_MASK  # Element and IS_RLVD_MASK
-        # sb      $t2, ($t4)              # Store above value as element
 
         beqz    $t2, if_grid_and_rvld_unmarked_conds2
 
@@ -370,45 +319,44 @@ if_debug_s2:
 
 
 if_debug_s2_body:
-        j mark_cell__epilogue
+        j       mark_cell__epilogue
 
 if_grid_and_rvld_s2_body:
-        li $v0, 4          #load immediate, $v0 = 4 used for hard coded value.
-        la $a0, mark_error  #load address
+        li      $v0, 4                   
+        la      $a0, mark_error         # printf("Cannot mark a revealed cell.\n")
         syscall
 
-        j mark_cell__epilogue
+        j       mark_cell__epilogue
 
 # unmark cell
 if_grid_and_rvld_unmarked_conds2:
         
-        mul     $t2, $a0, N_COLS    # curr_row * N_COL
-        add     $t2, $t2, $a1       # + curr_col
+        mul     $t2, $a0, N_COLS        # curr_row * N_COL
+        add     $t2, $t2, $a1           # + curr_col
         la      $t3, grid
 
-        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        mul     $t2, $t2, 1             # (curr_row * N_COL + curr_col) * 1
         add     $t4, $t2, $t3
         lb      $t2, ($t4)
 
-        and     $t2, $t2, IS_MRKD_MASK  # Element and IS_MRKD_MASK
-        # sb      $t2, ($t4)              # Store above value as element
+        and     $t2, $t2, IS_MRKD_MASK        # Element and IS_MRKD_MASK
 
-        beqz    $t2, else_marked_s2_body   # if grid[row][col] & is_mrkd_mask == 1
+        beqz    $t2, else_marked_s2_body      # if grid[row][col] & is_mrkd_mask == 1
 
 if_grid_and_mrkd_unmarked_body:
         li      $t6, IS_MRKD_MASK
 
-        not     $t5, $t6            # ~IS_MRKD_MASK
+        not     $t5, $t6                # ~IS_MRKD_MASK
 
-        mul     $t2, $a0, N_COLS    # curr_row * N_COL
-        add     $t2, $t2, $a1       # + curr_col
+        mul     $t2, $a0, N_COLS        # curr_row * N_COL
+        add     $t2, $t2, $a1           # + curr_col
         la      $t3, grid
 
-        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        mul     $t2, $t2, 1             # (curr_row * N_COL + curr_col) * 1
         add     $t4, $t2, $t3
         lb      $t2, ($t4)
 
-        and     $t2, $t2, $t5  # Element and IS_MRKD_MASK
+        and     $t2, $t2, $t5           # Element and IS_MRKD_MASK
         sb      $t2, ($t4)              # Store above value as element
 
         la      $t5, bomb_count
@@ -416,7 +364,7 @@ if_grid_and_mrkd_unmarked_body:
         addi    $t6, $t6, 1
         sw      $t6, ($t5)
 
-        j mark_cell__epilogue
+        j       mark_cell__epilogue
 
 
 else_marked_s2_body:
@@ -454,12 +402,12 @@ reveal_cell:
         #   $a1: int col
         # Returns: void
         #
-        # Frame:    $ra, [...]
-        # Uses:     [...]
-        # Clobbers: [...]
+        # Frame:    $ra, $s2, $s3
+        # Uses:     $ra, $t2, $t3, $t4, $s2, $s3
+        # Clobbers: $t2, $t3, $t4
         #
         # Locals:
-        #   - [...]
+        #   - 'grid[row][col]' is $t2
         #
         # Structure:
         #   reveal_cell
@@ -475,48 +423,7 @@ reveal_cell__prologue:
 
 reveal_cell__body:
 
-        # TODO: convert this C function to MIPS
-
-        # void reveal_cell(int row, int col) {
-        #   // Cannot reveal a cell that is currently marked.
-        #   if (grid[row][col] & IS_MRKD_MASK) {
-        #     if (debug_mode) {
-        #       return;
-        #     }
-        #     printf("Cannot reveal a marked cell.\n");
-        #     return;
-        #   }
-        #   if (grid[row][col] & IS_RVLD_MASK) {
-        #     if (debug_mode) {
-        #       return;
-        #     }
-        #     printf("Cell is already revealed.\n");
-        #     return;
-        #   }
-        #   // Trigger game over if the cell is a bomb.
-        #   if (grid[row][col] & IS_BOMB_MASK) {
-        #     game_state = LOSE;
-        #   }
-        #   // Reveal the cell.
-        #   if ((grid[row][col] & VALUE_MASK) == 0) {
-        #     clear_surroundings(row, col);
-        #   } else {
-        #     grid[row][col] |= IS_RVLD_MASK;
-
-        #     if (game_state != LOSE) {
-        #       cells_left--;
-        #     }
-        #   }
-
-        #   if (cells_left == 0) {
-        #     game_state = WIN;
-        #   }
-        # }
-
-        # PUT YOUR CODE FOR reveal_cell HERE
-
 if_grid_mark_cond_s3:
-# Cannot reveal a cell that is currently marked.
         # Find grid[row][col]
         mul     $t2, $a0, N_COLS    # curr_row * N_COL
         add     $t2, $t2, $a1       # + curr_col
@@ -528,28 +435,24 @@ if_grid_mark_cond_s3:
         lb      $t2, ($t4)
 
         # (if grid[row][col] & IS_MRKD_MASK != 0)
-        and     $t2, $t2, IS_MRKD_MASK  # Element and IS_MRKD_MASK
+        and     $t2, $t2, IS_MRKD_MASK          # Element and IS_MRKD_MASK
         beqz    $t2, if_grid_rvld_cond_s3
 
 if_debug_s3:
-
-        # (if debug_mode != 0)
         lw      $t3, debug_mode
-        beq     $t3, FALSE, if_grid_and_mrkd_s3_body
+        beq     $t3, FALSE, if_grid_and_mrkd_s3_body    # (if debug_mode != 0)
 
 
 if_debug_s3_body:
-        # return
-        j reveal_cell__epilogue
+        j       reveal_cell__epilogue
 
 if_grid_and_mrkd_s3_body:
 
-        #printf("Cannot reveal a marked cell.\n")
-        li $v0, 4          #load immediate, $v0 = 4 used for hard coded value.
-        la $a0, reveal_error  #load address
+        li      $v0, 4          
+        la      $a0, reveal_error  #printf("Cannot reveal a marked cell.\n")
         syscall
 
-        j reveal_cell__epilogue
+        j       reveal_cell__epilogue
 
 ###########################################
 if_grid_rvld_cond_s3:
@@ -560,27 +463,24 @@ if_grid_rvld_cond_s3:
         la      $t3, grid
         mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
         add     $t4, $t2, $t3
-        # Load the element of grid[row][col] into $t2
+       
         lb      $t2, ($t4)
         and     $t2, $t2, IS_RVLD_MASK  
         beqz    $t2, if_is_bomb_mask_s3_cond
 
 if_debug_rvld_s3:
-        # if (debug_mode)
-        
         lw      $t3, debug_mode
-        beq     $t3, FALSE, if_grid_and_rvld_s3_body
+        beq     $t3, FALSE, if_grid_and_rvld_s3_body    # if (debug_mode)
 
 if_debug_rvld_s3_body:
-        # return
-        j reveal_cell__epilogue
+        j       reveal_cell__epilogue
 
 if_grid_and_rvld_s3_body:
-        li $v0, 4          #load immediate, $v0 = 4 used for hard coded value.
-        la $a0, already_revealed  #load address
+        li      $v0, 4                  #load immediate, $v0 = 4 used for hard coded value.
+        la      $a0, already_revealed  #load address
         syscall
 
-        j reveal_cell__epilogue
+        j       reveal_cell__epilogue
 
 
 # Trigger game over if the cell is a bomb.
@@ -599,14 +499,13 @@ if_is_bomb_mask_s3_cond:
         and     $t2, $t2, IS_BOMB_MASK  # Element and VALUE_MASK
         beqz    $t2, if_reveal_cell_s3_cond
 
-# Trigger game over if the cell is a bomb.
 if_is_bomb_mask_s3_body:
         li      $t2, LOSE
         sw      $t2, game_state
 
 
-# Reveal the cell.
-        #if ((grid[row][col] & VALUE_MASK) == 0)
+
+# if ((grid[row][col] & VALUE_MASK) == 0)
 if_reveal_cell_s3_cond:
         
         mul     $t2, $a0, N_COLS    # curr_row * N_COL
@@ -647,27 +546,23 @@ else_reveal_cell_s3:
 
         sb      $t2, ($t4)
 
-# if (game_state != LOSE)
 if_game_state_not_lose_s3_cond:
         lw      $t2, game_state
-        beq     $t2, LOSE, if_cells_left_zero_s3_cond   
+        beq     $t2, LOSE, if_cells_left_zero_s3_cond   # if (game_state != LOSE)
 
-# cells_left--
 if_game_state_not_lose_s3_body:
         lw      $t3, cells_left
-        sub     $t3, $t3, 1
+        sub     $t3, $t3, 1                     # cells_left--
         sw      $t3, cells_left
 
-# if (cells_left == 0)
+
 if_cells_left_zero_s3_cond:
         lw      $t3, cells_left
-        bnez    $t3, reveal_cell__epilogue
+        bnez    $t3, reveal_cell__epilogue      # if (cells_left == 0)
 
 if_cells_left_zero_s3_body:
-        # lw      $t2, game_state
         li      $t3, WIN
-        # move    $t2, $t3
-        sw      $t3, game_state
+        sw      $t3, game_state         # game_state = WIN
 
 reveal_cell__epilogue:
         lw      $ra, 0($sp)
@@ -689,12 +584,12 @@ clear_surroundings:
         #   $a1: int col
         # Returns: void
         #
-        # Frame:    $ra, [...]
-        # Uses:     [...]
-        # Clobbers: [...]
+        # Frame:    $ra, $s0, $s1, $s4, $s5
+        # Uses:     $a0, $a1, $t2, $t3, $t4, $t5, $t6, $s0, $s1, $s4, $s5
+        # Clobbers: $t2, $t3, $t4, $t5, $t6
         #
         # Locals:
-        #   - [...]
+        #   - 'grid[row][col]' is $t2
         #
         # Structure:
         #   clear_surroundings
@@ -710,44 +605,7 @@ clear_surroundings__prologue:
         sw      $s4, 12($sp)
         sw      $s5, 16($sp)
 
-        # move    $s0, $a0
-        # move    $a1, $a1
-
 clear_surroundings__body:
-
-        # TODO: convert this C function to MIPS
-
-        # void clear_surroundings(int row, int col) {
-        #   if (row < 0 || row >= N_ROWS || col < 0 || col >= N_COLS) {
-        #     return;
-        #   }
-        #   if (grid[row][col] & IS_RVLD_MASK) {
-        #     return;
-        #   }
-        #   // Reveal the cell.
-        #   grid[row][col] |= IS_RVLD_MASK;
-        #   cells_left--;
-        #
-        #   // Unmark the cell if it was marked.
-        #   grid[row][col] &= ~IS_MRKD_MASK;
-        #
-        #   // Stop revealing once a numbered cell is reached.
-        #   if (grid[row][col] & VALUE_MASK) {
-        #     return;
-        #   }
-        #
-        #   // Recurse to the surrounding cells in the grid.
-        #   clear_surroundings(row - 1, col);
-        #   clear_surroundings(row - 1, col - 1);
-        #   clear_surroundings(row - 1, col + 1);
-        #   clear_surroundings(row, col - 1);
-        #   clear_surroundings(row, col + 1);
-        #   clear_surroundings(row + 1, col - 1);
-        #   clear_surroundings(row + 1, col);
-        #   clear_surroundings(row + 1, col + 1);
-        # }
-
-        # PUT YOUR CODE FOR clear_surroundings HERE
 
 clear_surrounding_if_1_cond_1:   
         blt     $a0, 0, clear_surroundings__epilogue
@@ -764,11 +622,11 @@ clear_surrounding_if_1_cond_4:
 
 clear_surrounding_if_2_cond:
 # if (grid[row][col] & IS_RVLD_MASK) != 0
-        mul     $t2, $a0, N_COLS    # curr_row * N_COL
-        add     $t2, $t2, $a1       # + curr_col
+        mul     $t2, $a0, N_COLS        # curr_row * N_COL
+        add     $t2, $t2, $a1           # + curr_col
         la      $t3, grid
 
-        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        mul     $t2, $t2, 1             # (curr_row * N_COL + curr_col) * 1
 
         add     $t4, $t2, $t3
         lb      $t2, ($t4)
@@ -778,10 +636,10 @@ clear_surrounding_if_2_cond:
 
 # Reveal the cell
 reveal_cell_s3:
-        mul     $t2, $a0, N_COLS    # curr_row * N_COL
-        add     $t2, $t2, $a1       # + curr_col
+        mul     $t2, $a0, N_COLS        # curr_row * N_COL
+        add     $t2, $t2, $a1           # + curr_col
         la      $t3, grid
-        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        mul     $t2, $t2, 1             # (curr_row * N_COL + curr_col) * 1
         add     $t4, $t2, $t3
         lb      $t2, ($t4)
         or      $t2, $t2, IS_RVLD_MASK  # Element and IS_RVLD_MASK
@@ -797,29 +655,29 @@ unmark_cell_s3:
         # grid[row][col] &= ~IS_MRKD_MASK
 
         li      $t6, IS_MRKD_MASK
-        not     $t5, $t6            # ~IS_MRKD_MASK
+        not     $t5, $t6                # ~IS_MRKD_MASK
 
-        mul     $t2, $a0, N_COLS    # curr_row * N_COL
-        add     $t2, $t2, $a1       # + curr_col
+        mul     $t2, $a0, N_COLS        # curr_row * N_COL
+        add     $t2, $t2, $a1           # + curr_col
         la      $t3, grid
-        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        mul     $t2, $t2, 1             # (curr_row * N_COL + curr_col) * 1
         add     $t4, $t2, $t3
         lb      $t2, ($t4)
 
-        and     $t2, $t2, $t5  # Element and IS_MRKD_MASK
+        and     $t2, $t2, $t5           # Element and IS_MRKD_MASK
         sb      $t2, ($t4)              # Store above value as element
 
 # Stop revealing once a numbered cell is reached.
 clear_surrounding_if_3_cond:
-        mul     $t2, $a0, N_COLS    # curr_row * N_COL
-        add     $t2, $t2, $a1       # + curr_col
+        mul     $t2, $a0, N_COLS        # curr_row * N_COL
+        add     $t2, $t2, $a1           # + curr_col
         la      $t3, grid
-        mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
+        mul     $t2, $t2, 1             # (curr_row * N_COL + curr_col) * 1
         add     $t4, $t2, $t3
         lb      $t2, ($t4)
 
         # if (grid[row][col] & VALUE_MASK != 0)
-        and     $t2, $t2, VALUE_MASK  # Element and IS_RLVD_MASK
+        and     $t2, $t2, VALUE_MASK    # Element and IS_RLVD_MASK
         beqz    $t2, recursion_clear_surroundings
 
 clear_surrounding_if_3_body:
@@ -827,15 +685,14 @@ clear_surrounding_if_3_body:
 
 
 recursion_clear_surroundings:
-# $s0 = row - 1, $s1 = col - 1, $s4 = row + 1, $s5 = col + 1
 
-        # Recursion 1
+        # Recursion 1 clear_surroundings(row - 1, col)
         move    $s0, $a0
         sub     $a0, $a0, 1
         jal     clear_surroundings
         move    $a0, $s0
         
-        # Recursion 2
+        # Recursion 2 clear_surroundings(row - 1, col - 1)
         move    $s0, $a0
         move    $s1, $a1
         sub     $a0, $a0, 1
@@ -844,7 +701,7 @@ recursion_clear_surroundings:
         move    $a0, $s0
         move    $a1, $s1
 
-        # Recursion 3
+        # Recursion 3 clear_surroundings(row - 1, col + 1)
         move    $s0, $a0
         move    $s4, $a1
         sub     $a0, $a0, 1
@@ -853,19 +710,19 @@ recursion_clear_surroundings:
         move    $a0, $s0
         move    $a1, $s4
 
-        # Recursion 4
+        # Recursion 4 clear_surroundings(row, col - 1)
         move    $s1, $a1
         sub     $a1, $a1, 1
         jal     clear_surroundings
         move    $a1, $s1
 
-        # Recursion 5
+        # Recursion 5 clear_surroundings(row, col + 1)
         move    $s5, $a1
         addi    $a1, $a1, 1
         jal     clear_surroundings
         move    $a1, $s5
 
-        # Recursion 6
+        # Recursion 6 clear_surroundings(row + 1, col - 1)
         move    $s5, $a0
         move    $s4, $a1
         addi    $a0, $a0, 1
@@ -874,13 +731,13 @@ recursion_clear_surroundings:
         move    $a0, $s5
         move    $a1, $s4
 
-        # Recursion 7
+        # Recursion 7 clear_surroundings(row + 1, col)
         move    $s5, $a0
         addi    $a0, $a0, 1
         jal     clear_surroundings
         move    $a0, $s5
 
-        # Recursion 8
+        # Recursion 8 clear_surroundings(row + 1, col + 1)
         move    $s4, $a0
         move    $s5, $a1
         addi    $a0, $a0, 1
@@ -911,11 +768,13 @@ update_highscore:
         # Returns: void
         #
         # Frame:    $ra, [...]
-        # Uses:     [...]
-        # Clobbers: [...]
+        # Uses:     $ra, $a0, $t0, $t1, $t2, $t3, $t4, $t5, $s0, $s1
+        # Clobbers: $t1, $t2, $t3, $t4, $t5
         #
         # Locals:
-        #   - [...]
+        #   - 'int i' is $t3
+        #   - current high score character names is $s1
+        #   - current user_name is $t5
         #
         # Structure:
         #   update_highscore
@@ -931,30 +790,8 @@ update_highscore__prologue:
 
 update_highscore__body:
 
-        # TODO: convert this C function to MIPS
-
-        # int update_highscore(int score) {
-        #   if (high_score.score < score) {
-        #     high_score.score = score;
-        #
-        #     // Copy over the string.
-        #     int i = 0;
-        #     while (user_name[i] != '\0') {
-        #       high_score.name[i] = user_name[i];
-        #       ++i;
-        #     }
-        #     high_score.name[i] = '\0';
-        #
-        #     return TRUE;
-        #   }
-        #   return FALSE;
-        # }
-
-        # PUT YOUR CODE FOR update_highscore HERE
 USERSCORE_SCORE = 0
 USERSCORE_NAME = 4
-# $t0 = high_score address, $t1 = high_score.score
-# $t2 = score, $t3 = i, $t4 = user_name
 
 if_hs_less_s4_cond:
         # if(high_score.score < score)
@@ -964,30 +801,22 @@ if_hs_less_s4_cond:
         bge     $t2, $a0, return_false_s4
 
 if_hs_less_s4_body_top:
-        # high_score.score = score
-        sw      $a0, ($s0)
+        sw      $a0, ($s0)      # high_score.score = score
 
-        # int i = 0
-        li      $t3, 0
+        li      $t3, 0          # int i = 0
 
 while_user_name_s4_cond:
         la      $t4, user_name
-        
-        # array of characters so offset is 1
-        add     $t4, $t4, $t3
-
+        add     $t4, $t4, $t3   # array of characters so offset is 1 each time
         lb      $t5, ($t4)
 
         beq     $t5, 0, if_hs_less_s4_body_bottom  #'\0'
 
 while_user_name_s4_body:
-        # high_score.name[i]
         la      $t0, high_score
         add     $t1, $t0, USERSCORE_NAME
         add     $s1, $t1, $t3
-        # lb      $t4, ($s1)
 
-        # user_name[i]
         la      $t2, user_name
         add     $t2, $t2, $t3
         lb      $t5, ($t2)
@@ -1001,7 +830,6 @@ if_hs_less_s4_body_bottom:
         la      $t0, high_score
         add     $s1, $t0, USERSCORE_NAME
         add     $s1, $t1, $t3
-        # lb      $t4, ($s1)
 
         li      $t2, 0
         sb      $t2, ($s1)
@@ -1031,12 +859,12 @@ print_scores:
         # Arguments: void
         # Returns: void
         #
-        # Frame:    $ra, [...]
-        # Uses:     [...]
-        # Clobbers: [...]
+        # Frame:    $ra, $s2
+        # Uses:     $t0, $t1, $t2, $t3, $s2
+        # Clobbers: $t0, $t1, $t2, $t3
         #
         # Locals:
-        #   - [...]
+        #   - 'int i' is $t0
         #
         # Structure:
         #   print_scores
@@ -1050,23 +878,20 @@ print_scores__prologue:
         sw      $s2, 4($sp)
 
 print_scores__body:
-        # printf("-------------SCORES-----------\n\n")
-        la      $a0, scores_msg
+        la      $a0, scores_msg         # printf("-------------SCORES-----------\n\n")
         li      $v0, 4                 
         syscall     
 
         # int i = 0
         li      $t0, 0
 for_loop_print_score_cond:
-
-        # for (int i = 0; i < MAX_SCORES; i++)
-        bge     $t0, MAX_SCORES, end_print
+        bge     $t0, MAX_SCORES, end_print      # for (int i = 0; i < MAX_SCORES; i++)
 
 for_loop_print_score_body:
-        #scores[i]
+        
         la      $t3, scores
         mul     $t2, $t0, USER_SCORE_SIZE
-        lw      $t1, scores($t2)
+        lw      $t1, scores($t2)        #scores[i]
 
         # UserScore curr
         la      $s2, high_score
@@ -1089,15 +914,15 @@ for_loop_print_score_body_bottom:
 
 
         # # curr.name
-        la      $t1, scores         # printf("%s", curr.name);
+        la      $t1, scores             # printf("%s", curr.name);
         addi    $t2, $t1, 4
         mul     $t3, $t0, 24
         add     $a0, $t2, $t3
         li      $v0, 4
         syscall   
 
-        li   $a0, '\n'              #   putchar('\n');
-        li   $v0, 11
+        li      $a0, '\n'               #   putchar('\n');
+        li      $v0, 11
         syscall
 
         la      $a0, scores_score_msg
@@ -1108,8 +933,8 @@ for_loop_print_score_body_bottom:
         li      $v0, 1                  
         syscall  
 
-        li   $a0, '\n'              #   putchar('\n');
-        li   $v0, 11
+        li      $a0, '\n'               #   putchar('\n');
+        li      $v0, 11
         syscall
 
 
