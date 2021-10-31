@@ -121,13 +121,13 @@ scores_score_msg:
 # Implement the following 7 functions,
 # and check these boxes as you finish implementing each function
 #
-#  - [ ] reveal_grid        - subset 0
-#  - [ ] place_bombs        - subset 1
-#  - [ ] mark_cell          - subset 2
-#  - [ ] reveal_cell        - subset 3
-#  - [ ] clear_surroundings - subset 3
-#  - [ ] update_highscore   - subset 4
-#  - [ ] print_scores       - subset 4
+#  - [X] reveal_grid        - subset 0
+#  - [X] place_bombs        - subset 1
+#  - [X] mark_cell          - subset 2
+#  - [X] reveal_cell        - subset 3
+#  - [X] clear_surroundings - subset 3
+#  - [X] update_highscore   - subset 4
+#  - [X] print_scores       - subset 4
 #
 ########################################################################
 
@@ -192,8 +192,6 @@ while_loop_col_it:
 while_loop_row_it:
         addi    $t0, $t0, 1
         j       while_loop_cond_rows
-
-        # PUT YOUR CODE FOR reveal_grid HERE
 
 reveal_grid__epilogue:
         lw      $ra, 0($sp)
@@ -431,8 +429,7 @@ if_grid_mark_cond_s3:
         mul     $t2, $t2, 1         # (curr_row * N_COL + curr_col) * 1
         add     $t4, $t2, $t3
 
-        # Store the element of grid[row][col] at $t2
-        lb      $t2, ($t4)
+        lb      $t2, ($t4)              # Load the element of grid[row][col] at $t2
 
         # (if grid[row][col] & IS_MRKD_MASK != 0)
         and     $t2, $t2, IS_MRKD_MASK          # Element and IS_MRKD_MASK
@@ -454,7 +451,6 @@ if_grid_and_mrkd_s3_body:
 
         j       reveal_cell__epilogue
 
-###########################################
 if_grid_rvld_cond_s3:
 
         # if (grid[row][col] & IS_RVLD_MASK)
@@ -477,13 +473,11 @@ if_debug_rvld_s3_body:
 
 if_grid_and_rvld_s3_body:
         li      $v0, 4                  #load immediate, $v0 = 4 used for hard coded value.
-        la      $a0, already_revealed  #load address
+        la      $a0, already_revealed   #load address
         syscall
 
         j       reveal_cell__epilogue
 
-
-# Trigger game over if the cell is a bomb.
 if_is_bomb_mask_s3_cond:
         
         # if (grid[row][col] & IS_BOMB_MASK)
@@ -504,10 +498,10 @@ if_is_bomb_mask_s3_body:
         sw      $t2, game_state
 
 
-
-# if ((grid[row][col] & VALUE_MASK) == 0)
 if_reveal_cell_s3_cond:
         
+        # if ((grid[row][col] & VALUE_MASK) == 0)
+
         mul     $t2, $a0, N_COLS    # curr_row * N_COL
         add     $t2, $t2, $a1       # + curr_col
         la      $t3, grid
@@ -531,7 +525,6 @@ if_reveal_cell_s3_body:
 
         j       if_cells_left_zero_s3_cond
 
-# else 
 else_reveal_cell_s3:
         mul     $t2, $a0, N_COLS    # curr_row * N_COL
         add     $t2, $t2, $a1       # + curr_col
@@ -549,6 +542,7 @@ else_reveal_cell_s3:
 if_game_state_not_lose_s3_cond:
         lw      $t2, game_state
         beq     $t2, LOSE, if_cells_left_zero_s3_cond   # if (game_state != LOSE)
+
 
 if_game_state_not_lose_s3_body:
         lw      $t3, cells_left
@@ -634,7 +628,6 @@ clear_surrounding_if_2_cond:
         and     $t2, $t2, IS_RVLD_MASK  # Element and IS_RLVD_MASK
         bnez    $t2, clear_surroundings__epilogue
 
-# Reveal the cell
 reveal_cell_s3:
         mul     $t2, $a0, N_COLS        # curr_row * N_COL
         add     $t2, $t2, $a1           # + curr_col
@@ -650,7 +643,6 @@ reveal_cell_s3:
         sub     $t3, $t3, 1
         sw      $t3, cells_left
 
-# Unmark the cell if it was marked
 unmark_cell_s3:
         # grid[row][col] &= ~IS_MRKD_MASK
 
@@ -667,7 +659,6 @@ unmark_cell_s3:
         and     $t2, $t2, $t5           # Element and IS_MRKD_MASK
         sb      $t2, ($t4)              # Store above value as element
 
-# Stop revealing once a numbered cell is reached.
 clear_surrounding_if_3_cond:
         mul     $t2, $a0, N_COLS        # curr_row * N_COL
         add     $t2, $t2, $a1           # + curr_col
